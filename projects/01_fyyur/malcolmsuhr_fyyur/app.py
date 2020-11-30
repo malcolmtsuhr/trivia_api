@@ -22,6 +22,8 @@ moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
 
+migrate = Migrate(app, db)
+
 # TODO: connect to a local postgresql database
 
 #----------------------------------------------------------------------------#
@@ -513,6 +515,7 @@ if not app.debug:
 
 # Default port:
 if __name__ == '__main__':
+    app.debug = True
     app.run()
 
 # Or specify port manually:
