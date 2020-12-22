@@ -1,14 +1,18 @@
 from datetime import datetime
-from flask_wtf import Form
-from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField
-from wtforms.validators import DataRequired, AnyOf, URL
+from flask_wtf import Form, FlaskForm
+from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField, IntegerField, FormField
+from wtforms.validators import DataRequired, AnyOf, URL, InputRequired, Length, ValidationError, NoneOf, NumberRange
+from wtforms.validators import NumberRange
+
 
 class ShowForm(Form):
     artist_id = StringField(
-        'artist_id'
+        'artist_id',
+        validators=[DataRequired()]
     )
     venue_id = StringField(
-        'venue_id'
+        'venue_id',
+        validators=[DataRequired()]
     )
     start_time = DateTimeField(
         'start_time',
@@ -46,6 +50,12 @@ class VenueForm(Form):
             ('KY', 'KY'),
             ('LA', 'LA'),
             ('ME', 'ME'),
+            ('MD', 'MD'),
+            ('MA', 'MA'),
+            ('MI', 'MI'),
+            ('MN', 'MN'),
+            ('MS', 'MS'),
+            ('MO', 'MO'),
             ('MT', 'MT'),
             ('NE', 'NE'),
             ('NV', 'NV'),
@@ -58,12 +68,6 @@ class VenueForm(Form):
             ('OH', 'OH'),
             ('OK', 'OK'),
             ('OR', 'OR'),
-            ('MD', 'MD'),
-            ('MA', 'MA'),
-            ('MI', 'MI'),
-            ('MN', 'MN'),
-            ('MS', 'MS'),
-            ('MO', 'MO'),
             ('PA', 'PA'),
             ('RI', 'RI'),
             ('SC', 'SC'),
@@ -82,14 +86,23 @@ class VenueForm(Form):
     address = StringField(
         'address', validators=[DataRequired()]
     )
-    phone = StringField(
-        'phone'
+# phone input as three separate fields for xxx-xxx-xxxx
+    area_code = IntegerField(
+        'area_code',
+        validators=[NumberRange(min=200, max=999, message='Insert Number'), DataRequired()]
+    )
+    exchange_code = IntegerField(
+        'exchange_code',
+        validators=[NumberRange(min=1, max=999, message='Insert Number'), DataRequired()]
+    )
+    line_number = IntegerField(
+        'line_number',
+        validators=[NumberRange(min=1, max=9999, message='Insert Number'), DataRequired()]
     )
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[URL()]
     )
     genres = SelectMultipleField(
-        # TODO implement enum restriction
         'genres', validators=[DataRequired()],
         choices=[
             ('Alternative', 'Alternative'),
@@ -115,6 +128,20 @@ class VenueForm(Form):
     )
     facebook_link = StringField(
         'facebook_link', validators=[URL()]
+    )
+    website = StringField(
+        'website', validators=[URL()]
+    )
+    seeking_talent = BooleanField(
+        'seeking_talent'
+    )
+    seeking_description = StringField(
+        'seeking_description'
+    )
+    creation_date = DateTimeField(
+        'creation_date',
+        validators=[DataRequired()],
+        default= datetime.today()
     )
 
 class ArtistForm(Form):
@@ -147,6 +174,12 @@ class ArtistForm(Form):
             ('KY', 'KY'),
             ('LA', 'LA'),
             ('ME', 'ME'),
+            ('MD', 'MD'),
+            ('MA', 'MA'),
+            ('MI', 'MI'),
+            ('MN', 'MN'),
+            ('MS', 'MS'),
+            ('MO', 'MO'),
             ('MT', 'MT'),
             ('NE', 'NE'),
             ('NV', 'NV'),
@@ -159,12 +192,6 @@ class ArtistForm(Form):
             ('OH', 'OH'),
             ('OK', 'OK'),
             ('OR', 'OR'),
-            ('MD', 'MD'),
-            ('MA', 'MA'),
-            ('MI', 'MI'),
-            ('MN', 'MN'),
-            ('MS', 'MS'),
-            ('MO', 'MO'),
             ('PA', 'PA'),
             ('RI', 'RI'),
             ('SC', 'SC'),
@@ -180,15 +207,23 @@ class ArtistForm(Form):
             ('WY', 'WY'),
         ]
     )
-    phone = StringField(
-        # TODO implement validation logic for state
-        'phone'
+# phone input as three separate fields for xxx-xxx-xxxx
+    area_code = IntegerField(
+        'area_code',
+        validators=[NumberRange(min=200, max=999, message='Insert Number'), DataRequired()]
+    )
+    exchange_code = IntegerField(
+        'exchange_code',
+        validators=[NumberRange(min=1, max=999, message='Insert Number'), DataRequired()]
+    )
+    line_number = IntegerField(
+        'line_number',
+        validators=[NumberRange(min=1, max=9999, message='Insert Number'), DataRequired()]
     )
     image_link = StringField(
         'image_link'
     )
     genres = SelectMultipleField(
-        # TODO implement enum restriction
         'genres', validators=[DataRequired()],
         choices=[
             ('Alternative', 'Alternative'),
@@ -213,8 +248,20 @@ class ArtistForm(Form):
         ]
     )
     facebook_link = StringField(
-        # TODO implement enum restriction
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(require_tld=True)]
     )
-
-# TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
+    website = StringField(
+        'website', validators=[URL()]
+    )
+    seeking_venue = BooleanField(
+        'seeking_venue',
+        default= False
+    )
+    seeking_description = StringField(
+        'seeking_description'
+    )
+    creation_date = DateTimeField(
+        'creation_date',
+        validators=[DataRequired()],
+        default= datetime.today()
+    )

@@ -87,6 +87,28 @@ p.lead {
     color: #444;
 }
 
+.del-button-venue {
+  clear: both;
+  -webkit-appearance: none;
+  border: none;
+  outline: none;
+  background-color: white;
+  color: red;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.del-button-artist {
+  clear: both;
+  -webkit-appearance: none;
+  border: none;
+  outline: none;
+  background-color: white;
+  color: red;
+  cursor: pointer;
+  font-size: 20px;
+}
+
 #content h3 {
   margin-top: 15px;
   margin-bottom: 15px;
@@ -208,4 +230,8 @@ h2.monospace {
 }
 .subtitle {
   opacity: 0.5;
+}
+.phone-form-control {
+  max-width: 60px;
+  text-align: center;
 }
