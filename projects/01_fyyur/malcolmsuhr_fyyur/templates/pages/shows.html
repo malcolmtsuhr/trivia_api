@@ -2,7 +2,7 @@
 {% block title %}Fyyur | Shows{% endblock %}
 {% block content %}
 <div class="row shows">
-<h3>Upcoming Shows:</h3>
+<h3>{% if shows %}Upcoming Shows:{% else %}No Upcoming Shows Listed{% endif %}</h3>
     {% for show in shows %}
     <div class="col-sm-4">
         <div class="tile tile-show">
@@ -16,7 +16,7 @@
     {% endfor %}
 </div>
 <div class="row shows">
-<h3>Past Shows:</h3>
+<h3>{% if past_shows %}Past Shows:{% else %}{% endif %}</h3>
     {% for show in past_shows %}
     <div class="col-sm-4">
         <div class="tile tile-show">

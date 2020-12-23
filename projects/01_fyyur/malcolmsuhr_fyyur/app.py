@@ -6,93 +6,19 @@ import sys
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect
-from flask import url_for
+from flask import (
+    Flask, render_template, request, Response, flash, redirect, url_for)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form, FlaskForm
 from forms import *
+from models import *
 from flask_migrate import Migrate
 from datetime import datetime
 from sqlalchemy import func
 
-# ----------------------------------------------------------------------------#
-# App Config.
-# ----------------------------------------------------------------------------#
-
-app = Flask(__name__)
-moment = Moment(app)
-app.config.from_object('config')
-db = SQLAlchemy(app)
-
-migrate = Migrate(app, db)
-
-
-# ----------------------------------------------------------------------------#
-# Models.
-# ----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-    __tablename__ = 'venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String())
-    genres = db.Column(db.String())
-    area_id = db.Column(db.Integer, db.ForeignKey('area.id'))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean(), nullable=False, default=False)
-    seeking_description = db.Column(db.String())
-    creation_date = db.Column(db.DateTime, nullable=False)
-    shows = db.relationship(
-        'Show', backref='venue', cascade='all, delete-orphan', lazy='joined')
-
-
-class Artist(db.Model):
-    __tablename__ = 'artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String())
-    genres = db.Column(db.String())
-    area_id = db.Column(db.Integer, db.ForeignKey('area.id'))
-    phone = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean, nullable=False, default=False)
-    seeking_description = db.Column(db.String())
-    creation_date = db.Column(db.DateTime, nullable=False)
-    shows = db.relationship(
-        'Show', backref='artist', cascade='all, delete-orphan', lazy='joined')
-
-
-class Show(db.Model):
-    __tablename__ = 'show'
-
-    id = db.Column(db.Integer, primary_key=True)
-    venue_id = db.Column(db.Integer, db.ForeignKey('venue.id'))
-    artist_id = db.Column(db.Integer, db.ForeignKey('artist.id'))
-    start_time = db.Column(db.DateTime, nullable=False)
-
-
-class Area(db.Model):
-    __tablename__ = 'area'
-
-    id = db.Column(db.Integer, primary_key=True)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    venues = db.relationship(
-        'Venue', backref='area', cascade='all, delete-orphan', lazy='joined')
-    artists = db.relationship(
-        'Artist', backref='area', cascade='all, delete-orphan', lazy='joined')
-
-    # city and state are input normalized as lowercase city, enum code state
-    # city is rendered with title() function in UI html
 
 # ----------------------------------------------------------------------------#
 # Filters.
@@ -170,17 +96,6 @@ def query_create_area(form, newObject):
     return objects
 
 
-# Format Genres: takes venue|artist object as self returns UI normalized genres
-def format_genres(self):
-    tmp_genres = (self.genres).replace(
-        '{', '').replace('}', '').replace('"', '')
-    tmp_genres = tmp_genres.split(',')
-    genre_array = {}
-    for genre in tmp_genres:
-        genre_array[genre] = genre
-    return genre_array
-
-
 # ----------------------------------------------------------------------------#
 # Controllers.
 # ----------------------------------------------------------------------------#
@@ -210,9 +125,9 @@ def venues():
         venues = Venue.query.filter_by(area_id=area.id).all()
 
         def comp_venues(venue):
-            shows = venue.shows
-            upcoming_shows = [show for show in shows
-                              if show.start_time >= datetime.today()]
+            upcoming_shows = Show.query.join(Venue).filter(
+                Show.venue_id == venue.id).filter(
+                Show.start_time >= datetime.now()).all()
             return {
                 "id": venue.id,
                 "name": venue.name,
@@ -240,9 +155,9 @@ def search_venues():
                      Area.query.get(venue.area_id).state.lower()]
 
     def comp_venues(venue):
-        shows = venue.shows
-        upcoming_shows = [show for show in shows
-                          if show.start_time >= datetime.today()]
+        upcoming_shows = Show.query.join(Venue).filter(
+            Show.venue_id == venue.id).filter(
+            Show.start_time >= datetime.now()).all()
         return {
             "id": venue.id,
             "name": venue.name,
@@ -263,11 +178,12 @@ def search_venues():
 def show_venue(venue_id):
     this_venue = Venue.query.get(venue_id)
     ref_area = Area.query.get(this_venue.area_id)
-    shows = this_venue.shows
-    upcoming_shows = [show for show in shows
-                      if show.start_time >= datetime.today()]
-    past_shows = [show for show in shows if show.start_time < datetime.today()]
-    genre_array = format_genres(this_venue)
+    upcoming_shows = Show.query.join(Venue).filter(
+        Show.venue_id == venue_id).filter(
+        Show.start_time >= datetime.now()).all()
+    past_shows = Show.query.join(Venue).filter(
+        Show.venue_id == venue_id).filter(
+        Show.start_time < datetime.now()).all()
 
     def comp_shows(show):
         this_artist = Artist.query.get(show.artist_id)
@@ -281,7 +197,7 @@ def show_venue(venue_id):
       "id": this_venue.id,
       "name": this_venue.name,
       "address": this_venue.address,
-      "genres": genre_array,
+      "genres": this_venue.genres,
       "city": ref_area.city,
       "state": ref_area.state,
       "phone": this_venue.phone,
@@ -330,7 +246,7 @@ def create_venue_submission():
         db.session.add_all(objects)
         db.session.commit()
         flash('Venue ' + request.form['name'] + ' was successfully listed!')
-    except:
+    except Exception:
         db.session.rollback()
         error = True
         flash('An error occurred. Venue ' + request.form['name'] +
@@ -392,7 +308,7 @@ def edit_venue_submission(venue_id):
         db.session.add_all(objects)
         db.session.commit()
         flash('Venue ' + request.form['name'] + ' was successfully edited!')
-    except:
+    except Exception:
         db.session.rollback()
         error = True
         flash('An error occurred. Venue ' + request.form['name'] +
@@ -412,7 +328,7 @@ def delete_venue(venue_id):
         this_venue = Venue.query.get(venue_id)
         db.session.delete(this_venue)
         db.session.commit()
-    except:
+    except Exception:
         db.session.rollback()
         error = True
     finally:
@@ -445,9 +361,9 @@ def search_artists():
                       Area.query.get(artist.area_id).state.lower()]
 
     def comp_artists(artist):
-        shows = artist.shows
-        upcoming_shows = [show for show in shows
-                          if show.start_time >= datetime.today()]
+        upcoming_shows = Show.query.join(Artist).filter(
+            Show.artist_id == artist.id).filter(
+            Show.start_time >= datetime.now()).all()
         return {
             "id": artist.id,
             "name": artist.name,
@@ -467,11 +383,12 @@ def search_artists():
 def show_artist(artist_id):
     this_artist = Artist.query.get(artist_id)
     ref_area = Area.query.get(this_artist.area_id)
-    shows = this_artist.shows
-    upcoming_shows = [show for show in shows
-                      if show.start_time >= datetime.today()]
-    past_shows = [show for show in shows if show.start_time < datetime.today()]
-    genre_array = format_genres(this_artist)
+    upcoming_shows = Show.query.join(Artist).filter(
+        Show.artist_id == artist_id).filter(
+        Show.start_time >= datetime.now()).all()
+    past_shows = Show.query.join(Venue).filter(
+        Show.artist_id == artist_id).filter(
+        Show.start_time < datetime.now()).all()
 
     def comp_shows(show):
         this_venue = Venue.query.get(show.venue_id)
@@ -484,7 +401,7 @@ def show_artist(artist_id):
     data = {
       "id": this_artist.id,
       "name": this_artist.name,
-      "genres": genre_array,
+      "genres": this_artist.genres,
       "city": ref_area.city,
       "state": ref_area.state,
       "phone": this_artist.phone,
@@ -550,7 +467,7 @@ def edit_artist_submission(artist_id):
         db.session.add_all(objects)
         db.session.commit()
         flash('Artist ' + request.form['name'] + ' was successfully edited!')
-    except:
+    except Exception:
         db.session.rollback()
         error = True
         flash('An error occurred. Venue ' + request.form['name'] +
@@ -592,7 +509,7 @@ def create_artist_submission():
         db.session.add_all(objects)
         db.session.commit()
         flash('Artist ' + request.form['name'] + ' was successfully listed!')
-    except:
+    except Exception:
         db.session.rollback()
         error = True
         flash('An error occurred. Artist ' + request.form['name'] +
@@ -612,7 +529,7 @@ def delete_artist(artist_id):
         this_artist = Artist.query.get(artist_id)
         db.session.delete(this_artist)
         db.session.commit()
-    except:
+    except Exception:
         db.session.rollback()
         error = True
     finally:
@@ -628,10 +545,8 @@ def delete_artist(artist_id):
 #  ----------------------------------------------------------------
 @app.route('/shows')
 def shows():
-    shows = Show.query.order_by('start_time')
-    upcoming_shows = [show for show in shows
-                      if show.start_time >= datetime.today()]
-    past_shows = [show for show in shows if show.start_time < datetime.today()]
+    upcoming_shows = Show.query.filter(Show.start_time >= datetime.now()).all()
+    past_shows = Show.query.filter(Show.start_time < datetime.now()).all()
 
     # compile upcoming show data & reference venue|artist data by id
     def comp_data(show):
@@ -719,7 +634,7 @@ def create_show_submission():
         db.session.add(newShow)
         db.session.commit()
         flash('Show was successfully listed!')
-    except:
+    except Exception:
         db.session.rollback()
         error = True
         flash('An error occurred. Show could not be listed.')
@@ -732,9 +647,24 @@ def create_show_submission():
 #  ----------------------------------------------------------------
 #  Route Handler Controllers Section.
 #  ----------------------------------------------------------------
+@app.errorhandler(400)
+def bad_request_error(error):
+    return render_template('errors/400.html'), 400
+
+
 @app.errorhandler(404)
 def not_found_error(error):
     return render_template('errors/404.html'), 404
+
+
+@app.errorhandler(409)
+def duplicate_resource_error(error):
+    return render_template('errors/409.html'), 409
+
+
+@app.errorhandler(422)
+def not_processable_error(error):
+    return render_template('errors/422.html'), 422
 
 
 @app.errorhandler(500)
